@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="fr" data-lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto Scouting Tool</title>
+<meta name="description" content="Auto Scouting Tool — mod Geode pour Geometry Dash qui trouve automatiquement un chemin pour réussir un niveau. / A Geode mod for Geometry Dash that automatically finds a path through a level.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d17;
+    --bg-2: #12152a;
+    --card: #161a33;
+    --line: #262b52;
+    --text: #e8eaf6;
+    --muted: #9aa0c3;
+    --accent: #38e8c6;
+    --accent-2: #8b7bff;
+    --warn: #ffcc4d;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 "Inter", system-ui, sans-serif;
+  }
+  a { color: var(--accent); }
+  h1, h2, h3 { font-family: "Space Grotesk", sans-serif; line-height: 1.2; margin: 0 0 .6em; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+  /* Language switching */
+  html[data-lang="fr"] [lang="en"] { display: none !important; }
+  html[data-lang="en"] [lang="fr"] { display: none !important; }
+
+  /* Header */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(11, 13, 23, .85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: "Space Grotesk", sans-serif; font-weight: 700; color: var(--text); text-decoration: none; }
+  .logo { width: 28px; height: 28px; }
+  .nav-links { display: flex; gap: 20px; align-items: center; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .nav-links a:hover { color: var(--text); }
+  .lang-toggle {
+    border: 1px solid var(--line); background: var(--bg-2); color: var(--text);
+    border-radius: 999px; padding: 6px 12px; font: 600 13px "Inter", sans-serif; cursor: pointer;
+  }
+  .lang-toggle:hover { border-color: var(--accent); }
+
+  /* Hero */
+  .hero { position: relative; overflow: hidden; padding: 96px 0 80px; }
+  .hero::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 48px 48px,
+      linear-gradient(90deg, var(--line) 1px, transparent 1px) 0 0 / 48px 48px;
+    opacity: .35;
+    mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+  }
+  .hero .wrap { position: relative; }
+  .tag {
+    display: inline-block; font-size: 13px; color: var(--accent);
+    border: 1px solid rgba(56, 232, 198, .35); border-radius: 999px; padding: 4px 12px; margin-bottom: 20px;
+  }
+  .hero h1 { font-size: clamp(36px, 6vw, 64px); }
+  .hero h1 span { color: var(--accent); }
+  .hero p.lead { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 640px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+  .btn {
+    display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600;
+    text-decoration: none; border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--accent); color: #062019; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-ghost { border-color: var(--line); color: var(--text); }
+  .btn-ghost:hover { border-color: var(--accent); }
+
+  /* Path illustration */
+  .path-art { margin-top: 56px; width: 100%; height: auto; display: block; }
+
+  /* Sections */
+  section { padding: 72px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: clamp(26px, 4vw, 36px); }
+  .section-lead { color: var(--muted); max-width: 680px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .card h3 { font-size: 18px; }
+  .card p { color: var(--muted); margin: 0; }
+  .icon { width: 36px; height: 36px; margin-bottom: 12px; }
+
+  .modes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip { background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; }
+  .chip.no { color: var(--muted); text-decoration: line-through; }
+
+  .steps { counter-reset: step; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .step::before {
+    counter-increment: step; content: counter(step);
+    display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent-2); color: #fff; font-weight: 700; margin-bottom: 12px;
+  }
+  .step p { color: var(--muted); margin: 0; }
+
+  .price-card { max-width: 440px; background: var(--card); border: 1px solid var(--accent); border-radius: 16px; padding: 28px; }
+  .price { font-family: "Space Grotesk", sans-serif; font-size: 44px; font-weight: 700; }
+  .price small { font-size: 16px; color: var(--muted); font-weight: 400; }
+  .price-card ul { padding-left: 20px; color: var(--muted); }
+
+  .legal h3 { font-size: 20px; margin-top: 28px; }
+  .legal p, .legal li { color: var(--muted); }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+  summary { cursor: pointer; font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 18px; }
+  details[open] summary { margin-bottom: 8px; }
+
+  footer { border-top: 1px solid var(--line); padding: 32px 0; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+  @media (max-width: 640px) {
+    .nav-links a { display: none; }
+    .hero { padding: 64px 0 56px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="3" y="3" width="26" height="26" rx="6" fill="none" stroke="#38e8c6" stroke-width="2.5"/>
+        <path d="M8 22 L14 14 L18 18 L24 9" fill="none" stroke="#8b7bff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Auto Scouting Tool
+    </a>
+    <nav class="nav-links">
+      <a href="#features"><span lang="fr">Fonctions</span><span lang="en">Features</span></a>
+      <a href="#pricing"><span lang="fr">Prix</span><span lang="en">Pricing</span></a>
+      <a href="#support"><span lang="fr">Soutien</span><span lang="en">Support</span></a>
+      <button class="lang-toggle" id="langToggle" type="button" aria-label="Changer de langue / Switch language">EN</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="wrap">
+      <span class="tag" lang="fr">Mod Geode pour Geometry Dash</span>
+      <span class="tag" lang="en">Geode mod for Geometry Dash</span>
+
+      <h1 lang="fr">Trouvez le chemin de <span>n'importe quel niveau</span>.</h1>
+      <h1 lang="en">Find the path through <span>any level</span>.</h1>
+
+      <p class="lead" lang="fr">Auto Scouting Tool simule un niveau et calcule automatiquement une séquence d'entrées qui le réussit. Idéal pour analyser un niveau, préparer une vitrine, ou vérifier qu'une création est faisable.</p>
+      <p class="lead" lang="en">Auto Scouting Tool simulates a level and automatically computes a sequence of inputs that completes it. Perfect for level analysis, showcases, or checking that a creation is possible.</p>
+
+      <div class="cta">
+        <a class="btn btn-primary" href="#pricing"><span lang="fr">Voir le prix</span><span lang="en">See pricing</span></a>
+        <a class="btn btn-ghost" href="#features"><span lang="fr">Fonctions</span><span lang="en">Features</span></a>
+      </div>
+
+      <svg class="path-art" viewBox="0 0 1000 160" aria-hidden="true">
+        <defs>
+          <linearGradient id="pg" x1="0" x2="1">
+            <stop offset="0" stop-color="#8b7bff"/>
+            <stop offset="1" stop-color="#38e8c6"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="140" x2="1000" y2="140" stroke="#262b52" stroke-width="2"/>
+        <polygon points="230,140 250,105 270,140" fill="#262b52"/>
+        <polygon points="470,140 490,105 510,140" fill="#262b52"/>
+        <polygon points="510,140 530,105 550,140" fill="#262b52"/>
+        <rect x="690" y="95" width="45" height="45" fill="#262b52"/>
+        <polygon points="860,140 880,105 900,140" fill="#262b52"/>
+        <path d="M20 130 L200 130 Q250 40 300 130 L440 130 Q510 20 580 130 L660 130 Q690 70 720 90 L740 90 Q780 90 800 130 L830 130 Q880 40 930 130 L990 130"
+              fill="none" stroke="url(#pg)" stroke-width="3" stroke-dasharray="8 7" stroke-linecap="round"/>
+        <rect x="8" y="118" width="22" height="22" rx="3" fill="#38e8c6"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="wrap">
+      <h2 lang="fr">Fonctions</h2>
+      <h2 lang="en">Features</h2>
+
+      <div class="grid">
+        <div class="card">
+          <svg class="icon" viewBox="0 0 36 36" aria-hidden="true"><path d="M5 28 L13 16 L20 22 L31 7" fill="none" stroke="#38e8c6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3 lang="fr">Recherche de chemin automatique</h3>
+          <h3 lang="en">Automatic pathfinding</h3>
+          <p lang="fr">Un simulateur reproduit la physique du jeu pour trouver une suite d'entrées qui mène jusqu'à la fin du niveau.</p>
+          <p lang="en">A simulator reproduces the game's physics to find a sequence of inputs that reaches the end of the level.</p>
+        </div>
+        <div class="card">
+          <svg class="icon" viewBox="0 0 36 36" aria-hidden="true"><rect x="5" y="5" width="11" height="11" rx="2" fill="none" stroke="#8b7bff" stroke-width="3"/><rect x="20" y="5" width="11" height="11" rx="2" fill="none" stroke="#38e8c6" stroke-width="3"/><rect x="5" y="20" width="11" height="11" rx="2" fill="none" stroke="#38e8c6" stroke-width="3"/><rect x="20" y="20" width="11" height="11" rx="2" fill="none" stroke="#8b7bff" stroke-width="3"/></svg>
+          <h3 lang="fr">Tous les modes classiques</h3>
+          <h3 lang="en">Every classic gamemode</h3>
+          <p lang="fr">Y compris les duals et les fonctions ajoutées en 2.2.</p>
+          <p lang="en">Including duals and features added in 2.2.</p>
+          <div class="modes">
+            <span class="chip">Cube</span><span class="chip">Ship</span><span class="chip">Ball</span><span class="chip">UFO</span>
+            <span class="chip">Wave</span><span class="chip">Robot</span><span class="chip">Spider</span><span class="chip">Swing</span>
+            <span class="chip">Duals</span><span class="chip no">Platformer</span>
+          </div>
+        </div>
+        <div class="card">
+          <svg class="icon" viewBox="0 0 36 36" aria-hidden="true"><path d="M18 4 L30 9 V18 C30 25 25 30 18 32 C11 30 6 25 6 18 V9 Z" fill="none" stroke="#38e8c6" stroke-width="3" stroke-linejoin="round"/><path d="M12 18 L16 22 L24 14" fill="none" stroke="#8b7bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3 lang="fr">Conçu pour le jeu loyal</h3>
+          <h3 lang="en">Built for fair play</h3>
+          <p lang="fr">Filigrane visible pendant toute la partie et sceau sur l'écran de fin. Aucune progression en ligne n'est enregistrée pendant son utilisation, et il ne peut pas servir à vérifier un niveau pour le publier.</p>
+          <p lang="en">A visible watermark during the whole attempt and a seal on the completion screen. No online progress is submitted while it's active, and it can't be used to verify a level for upload.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="wrap">
+      <h2 lang="fr">Comment ça marche</h2>
+      <h2 lang="en">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <p lang="fr">Achetez le mod sur ce site. Le paiement est traité de façon sécurisée par Stripe.</p>
+          <p lang="en">Buy the mod on this website. Payment is processed securely by Stripe.</p>
+        </div>
+        <div class="step">
+          <p lang="fr">Recevez votre clé de licence par courriel.</p>
+          <p lang="en">Receive your license key by email.</p>
+        </div>
+        <div class="step">
+          <p lang="fr">Installez Auto Scouting Tool depuis le chargeur de mods Geode.</p>
+          <p lang="en">Install Auto Scouting Tool from the Geode mod loader.</p>
+        </div>
+        <div class="step">
+          <p lang="fr">Entrez votre clé dans le jeu, puis lancez la recherche sur un niveau.</p>
+          <p lang="en">Enter your key in-game, then run the search on any level.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing">
+    <div class="wrap">
+      <h2 lang="fr">Prix</h2>
+      <h2 lang="en">Pricing</h2>
+      <div class="price-card">
+        <span class="tag" lang="fr">Accès anticipé</span>
+        <span class="tag" lang="en">Early access</span>
+        <div class="price" lang="fr">4,99 $ <small>US</small></div>
+        <div class="price" lang="en">$4.99 <small>USD</small></div>
+        <p lang="fr" style="color:var(--muted);margin-top:0">Prix de l'accès anticipé. Le prix passera à 8,99 $ US à la sortie de la version complète.</p>
+        <p lang="en" style="color:var(--muted);margin-top:0">Early access price. The price will be $8.99 USD when the full version is released.</p>
+        <ul>
+          <li lang="fr">Achat unique, pas d'abonnement</li>
+          <li lang="en">One-time purchase, no subscription</li>
+          <li lang="fr">Licence personnelle permanente</li>
+          <li lang="en">Permanent personal license</li>
+          <li lang="fr">Toutes les mises à jour incluses, y compris la version complète</li>
+          <li lang="en">All updates included, including the full version</li>
+          <li lang="fr">Version en développement : certains niveaux peuvent ne pas encore être pris en charge</li>
+          <li lang="en">Work in progress: some levels may not be supported yet</li>
+          <li lang="fr">Les taxes applicables sont calculées au paiement</li>
+          <li lang="en">Applicable taxes are calculated at checkout</li>
+        </ul>
+        <p lang="fr" style="color:var(--warn);margin-bottom:0">Les ventes ouvriront sous peu.</p>
+        <p lang="en" style="color:var(--warn);margin-bottom:0">Sales will open shortly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SUPPORT -->
+  <section id="support">
+    <div class="wrap">
+      <h2 lang="fr">Soutien et contact</h2>
+      <h2 lang="en">Support and contact</h2>
+      <p class="section-lead" lang="fr">Une question, un problème avec votre clé ou une demande de remboursement? Écrivez-nous à <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a>. Nous répondons habituellement en moins de 48 heures.</p>
+      <p class="section-lead" lang="en">A question, a problem with your key, or a refund request? Email us at <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a>. We usually reply within 48 hours.</p>
+    </div>
+  </section>
+
+  <!-- LEGAL -->
+  <section id="legal" class="legal">
+    <div class="wrap">
+      <h2 lang="fr">Politiques</h2>
+      <h2 lang="en">Policies</h2>
+
+      <details>
+        <summary><span lang="fr">Remboursements et contestations</span><span lang="en">Refunds and disputes</span></summary>
+        <div lang="fr">
+          <p>Si le mod ne fonctionne pas comme décrit sur votre installation et que nous ne parvenons pas à régler le problème, nous vous remboursons entièrement dans les 14 jours suivant l'achat. Écrivez-nous à <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a> avec votre numéro de commande.</p>
+          <p>Les paiements sont traités par Link (Stripe), qui agit comme vendeur officiel de la transaction. Vous pouvez aussi demander un remboursement directement auprès du <a href="https://support.link.com/topics/sold-through-link" rel="noopener">soutien de Link</a>.</p>
+          <p>Avant de contester un paiement auprès de votre banque, contactez-nous : la plupart des problèmes se règlent rapidement par courriel.</p>
+        </div>
+        <div lang="en">
+          <p>If the mod doesn't work as described on your setup and we can't fix the issue, we'll give you a full refund within 14 days of purchase. Email <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a> with your order number.</p>
+          <p>Payments are processed by Link (Stripe), which acts as the merchant of record for the transaction. You can also request a refund directly through <a href="https://support.link.com/topics/sold-through-link" rel="noopener">Link support</a>.</p>
+          <p>Before disputing a charge with your bank, please contact us: most issues are resolved quickly by email.</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span lang="fr">Conditions d'utilisation</span><span lang="en">Terms of use</span></summary>
+        <div lang="fr">
+          <ul>
+            <li>La licence est personnelle : une clé par personne. Il est interdit de la partager, de la revendre ou de redistribuer le mod.</li>
+            <li>Le mod ne doit pas servir à tromper d'autres joueurs, par exemple en faisant passer une réussite automatisée pour une réussite humaine.</li>
+            <li>Le mod est fourni tel quel. Une mise à jour de Geometry Dash peut temporairement l'empêcher de fonctionner, le temps que nous publiions un correctif.</li>
+            <li>Auto Scouting Tool est un mod non officiel. Il n'est ni affilié à RobTop Games ni approuvé par RobTop Games.</li>
+          </ul>
+        </div>
+        <div lang="en">
+          <ul>
+            <li>The license is personal: one key per person. You may not share or resell it, or redistribute the mod.</li>
+            <li>The mod must not be used to deceive other players, for example by passing off an automated completion as a human one.</li>
+            <li>The mod is provided as is. A Geometry Dash update may temporarily stop it from working until we release a fix.</li>
+            <li>Auto Scouting Tool is an unofficial mod. It is not affiliated with or endorsed by RobTop Games.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details>
+        <summary><span lang="fr">Confidentialité</span><span lang="en">Privacy</span></summary>
+        <div lang="fr">
+          <p><strong>Ce que nous recueillons :</strong> votre adresse courriel, votre clé de licence et l'historique de vos achats. Nous ne voyons jamais vos données de carte : elles sont traitées directement par Stripe et Link.</p>
+          <p><strong>Pourquoi :</strong> pour vous livrer votre clé, vérifier votre licence lorsque le mod la valide en ligne, et répondre à vos demandes de soutien.</p>
+          <p><strong>Communication :</strong> nous ne vendons ni ne louons vos renseignements. Ils sont communiqués uniquement aux fournisseurs nécessaires au service (traitement des paiements, envoi des courriels, hébergement), dont certains peuvent être situés à l'extérieur du Québec.</p>
+          <p><strong>Conservation :</strong> nous conservons ces renseignements tant que votre licence est active, ou selon les exigences de la loi.</p>
+          <p><strong>Vos droits :</strong> vous pouvez demander d'accéder à vos renseignements, de les corriger ou de les supprimer en écrivant au responsable de la protection des renseignements personnels.</p>
+          <p><strong>Responsable de la protection des renseignements personnels :</strong> <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a></p>
+          <p>Ce site n'utilise aucun témoin (cookie) de suivi.</p>
+        </div>
+        <div lang="en">
+          <p><strong>What we collect:</strong> your email address, your license key, and your purchase history. We never see your card details: they are processed directly by Stripe and Link.</p>
+          <p><strong>Why:</strong> to deliver your key, check your license when the mod validates it online, and answer your support requests.</p>
+          <p><strong>Sharing:</strong> we don't sell or rent your information. It is only shared with providers needed to run the service (payment processing, email delivery, hosting), some of which may be located outside Quebec.</p>
+          <p><strong>Retention:</strong> we keep this information for as long as your license is active, or as required by law.</p>
+          <p><strong>Your rights:</strong> you can ask to access, correct, or delete your information by contacting the person in charge of the protection of personal information.</p>
+          <p><strong>Person in charge of the protection of personal information:</strong> <a href="mailto:astgdsupport@gmail.com">astgdsupport@gmail.com</a></p>
+          <p>This website does not use tracking cookies.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year">2026</span> Auto Scouting Tool</span>
+    <span lang="fr">Geometry Dash est une marque de RobTop Games. Ce mod n'est pas affilié à RobTop Games.</span>
+    <span lang="en">Geometry Dash is a trademark of RobTop Games. This mod is not affiliated with RobTop Games.</span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('langToggle');
+
+    function setLang(lang) {
+      root.setAttribute('data-lang', lang);
+      root.setAttribute('lang', lang);
+      btn.textContent = lang === 'fr' ? 'EN' : 'FR';
+      try { localStorage.setItem('ast-lang', lang); } catch (e) {}
+    }
+
+    var saved = null;
+    try { saved = localStorage.getItem('ast-lang'); } catch (e) {}
+    var browser = (navigator.language || 'fr').toLowerCase().indexOf('fr') === 0 ? 'fr' : 'en';
+    setLang(saved || browser);
+
+    btn.addEventListener('click', function () {
+      setLang(root.getAttribute('data-lang') === 'fr' ? 'en' : 'fr');
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  })();
+</script>
+</body>
+</html>
